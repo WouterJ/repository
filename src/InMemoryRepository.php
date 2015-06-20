@@ -160,6 +160,35 @@ class InMemoryRepository implements EditableRepository
     /**
      * {@inheritdoc}
      */
+    public function move($sourceQuery, $targetPath, $language = 'glob')
+    {
+        $iterator = $this->find($sourceQuery, $language);
+        $moved = 0;
+
+        Assert::notEq('', trim($sourceQuery, '/'), 'The root directory cannot be moved.');
+        Assert::stringNotEmpty($targetPath, 'The target path must be a non-empty string. Got: %s');
+        Assert::startsWith($targetPath, '/', 'The target path %s is not absolute.');
+
+        $targetPath = Path::canonicalize($targetPath);
+
+        $sources = iterator_to_array($iterator);
+
+        if (1 === count($sources) && !$this->hasChildren($sources[0]->getPath())) {
+            $this->moveResource($sources[0], $targetPath, $moved);
+        } else {
+            $this->ensureDirectoryExists($targetPath);
+
+            foreach ($sources as $source) {
+                $this->moveResource($source, $targetPath.'/'.Path::getFilename($source->getPath()), $moved);
+            }
+        }
+
+        return $moved;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function remove($query, $language = 'glob')
     {
         $resources = $this->find($query, $language);
@@ -253,6 +282,20 @@ class InMemoryRepository implements EditableRepository
         foreach ($children as $name => $child) {
             $this->addResource($basePath.$name, $child);
         }
+    }
+
+    private function moveResource(Resource $resource, $targetPath, &$moved)
+    {
+        $sourcePath = $resource->getPath();
+
+        foreach ($this->getChildIterator($resource) as $child) {
+            $this->moveResource($child, $targetPath.'/'.Path::getFilename($child->getPath()), $moved);
+        }
+
+        $this->resources[$targetPath] = $this->resources[$sourcePath];
+
+        ++$moved;
+        unset($this->resources[$sourcePath]);
     }
 
     private function removeResource(Resource $resource)

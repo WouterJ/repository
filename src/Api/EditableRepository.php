@@ -52,6 +52,16 @@ interface EditableRepository extends ResourceRepository
     public function remove($query, $language = 'glob');
 
     /**
+     * Moves a resource inside the repository.
+     *
+     * @param Resource|ResourceCollection $resourcee The resource(s) to move to
+     *                                               the path
+     * @param string                      $path      The path to move the resources
+     *                                               to
+     */
+    public function move($sourcePath, $targetPath, $language = 'glob');
+
+    /**
      * Removes all resources from the repository.
      *
      * @return integer The number of resources removed from the repository.

@@ -254,6 +254,35 @@ class FilesystemRepository implements EditableRepository
     /**
      * {@inheritdoc}
      */
+    public function move($sourceQuery, $targetPath, $language = 'glob')
+    {
+        $iterator = $this->getGlobIterator($sourceQuery, $language);
+        $moved = 0;
+
+        Assert::notEq('', trim($sourceQuery, '/'), 'The root directory cannot be moved.');
+        Assert::stringNotEmpty($targetPath, 'The target path must be a non-empty string. Got: %s');
+        Assert::startsWith($targetPath, '/', 'The target path %s is not absolute.');
+
+        $targetPath = Path::canonicalize($targetPath);
+
+        $sourcePaths = iterator_to_array($iterator);
+
+        if (1 === count($sourcePaths) && is_file($sourcePaths[0])) {
+            $this->moveResource($sourcePaths[0], $targetPath, $moved);
+        } else {
+            $this->ensureDirectoryExists($targetPath);
+
+            foreach ($sourcePaths as $sourcePath) {
+                $this->moveResource($sourcePath, $targetPath.'/'.Path::getFilename($sourcePath), $moved);
+            }
+        }
+
+        return $moved;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function clear()
     {
         $iterator = new RecursiveDirectoryIterator($this->baseDir);
@@ -347,6 +376,18 @@ class FilesystemRepository implements EditableRepository
         }
 
         $this->filesystem->remove($filesystemPath);
+    }
+
+    private function moveResource($sourcePath, $targetPath, &$moved)
+    {
+        $targetPathInBaseDir = $this->baseDir.$targetPath;
+        ++$moved;
+
+        if (is_dir($sourcePath)) {
+            $moved += $this->countChildren($sourcePath);
+        }
+
+        $this->filesystem->rename($sourcePath, $targetPathInBaseDir);
     }
 
     private function createResource($filesystemPath, $path)

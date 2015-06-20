@@ -44,6 +44,13 @@ class NullRepository implements EditableRepository
     /**
      * {@inheritdoc}
      */
+    public function move($sourcePath, $targetPath, $language = 'glob')
+    {
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function clear()
     {
     }
